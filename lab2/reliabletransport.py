@@ -9,13 +9,14 @@ class ReliableTransport(Connection):
                  destination_address,destination_port,window_size,app=None):
         Connection.__init__(self,transport,source_address,source_port,
                             destination_address,destination_port,app)
-        # self.send_buffer = ''
-        self.dallin_buffer = {}
-        self.receive_buffer = ''
-        self.packet_is_outstanding = False
+        self.send_buffer = ''
+        self.next_sequence_num = 0
+        self.received_ack_number = 0
+        self.unacked_packet_count = 0
         self.mss = 1000
         self.sequence = 0
-        self.last_sent = 0
+        self.received_sequences = set([])
+        self.receive_buffer = []
         self.ack = 0
         self.timer = None
         self.timeout = 1
@@ -23,50 +24,30 @@ class ReliableTransport(Connection):
         self.window_size = window_size
 
     def handle_packet(self,packet):
-        # handle ACK
-        if self.packet_is_outstanding and packet.ack_number == self.sequence:
-            # this acks new data, so advance the send buffer, reset
-            # the outstanding flag, cancel the timer, and send if possible
-            Sim.trace("%d received ReliableTransport ACK from %d for %d" % (packet.destination_address,packet.source_address,packet.ack_number))
-            # self.send_buffer = self.send_buffer[self.sequence-self.last_sent:]
-            del self.dallin_buffer[min(self.dallin_buffer)]
-            self.packet_is_outstanding = False
-            self.cancel_timer()
-            if self.dallin_buffer:
-                self.send_if_possible(self.dallin_buffer[min(self.dallin_buffer)])
-        # handle data
+        # handle ACK (the sender getting ACKs and sending sequences)
+        if packet.ack_number > self.received_ack_number:
+            self.handle_ack(packet)
+        
+        # handle data (the receiver getting sequences and sending back ACKs)
         if packet.length > 0:
-            Sim.trace("%d received ReliableTransport segment from %d for %d" % (packet.destination_address,packet.source_address,packet.sequence))
-            # if the packet is the one we're expecting, increment our
-            # ack number and add the data to the receive buffer
-            if packet.sequence == self.ack:
-                self.increment_ack(packet.sequence + packet.length)
-                self.receive_buffer += packet.body
-                # deliver data that is in order
-                self.app.handle_packet(packet)
-            # always send an ACK
-            self.send_ack()
+            self.handle_sequence(packet)
 
     def send(self,data):
-        self.dallin_buffer[len(self.dallin_buffer)] = data
-        # self.send_buffer += data
-        self.send_if_possible(data)
+        self.send_buffer += data
+        self.send_if_possible()
 
-    def send_if_possible(self, data):
-        if self.packet_is_outstanding:
+    def send_if_possible(self):
+        if not self.send_buffer:
             return
-        # if not self.send_buffer:
-        #     return
-        if not self.dallin_buffer:
+        if self.unacked_packet_count >= self.window_size:
             return
-        self.packet_is_outstanding = True
-        packet = self.send_one_packet(data, self.sequence)
-        self.last_sent = self.sequence
+        packet = self.send_one_packet(self.sequence)
         self.increment_sequence(packet.length)
+        self.unacked_packet_count += 1
 
-    def send_one_packet(self, body, sequence):
+    def send_one_packet(self, sequence):
         # get one packet worth of data
-        # body = self.send_buffer[0:self.mss]
+        body = self.send_buffer[sequence:(sequence + self.mss)]
         packet = TCPPacket(source_address=self.source_address,
                            source_port=self.source_port,
                            destination_address=self.destination_address,
@@ -76,8 +57,9 @@ class ReliableTransport(Connection):
         # send the packet
         Sim.trace("%d sending ReliableTransport segment to %d for %d" % (self.source_address,self.destination_address,packet.sequence))
         self.transport.send_packet(packet)
-        # set a timer
-        self.timer = Sim.scheduler.add(delay=self.timeout, event='retransmit', handler=self.retransmit)
+        # set a timer if it's not already going
+        if not self.timer:
+            self.timer = Sim.scheduler.add(delay=self.timeout, event='retransmit', handler=self.retransmit)
         return packet
 
     def send_ack(self):
@@ -102,16 +84,38 @@ class ReliableTransport(Connection):
         return True
 
     def retransmit(self,event):
-        # if not self.send_buffer:
-        #     return
-        if not self.dallin_buffer:
-            return
-        if not self.packet_is_outstanding:
-            return
-        Sim.trace("%d retransmission timer fired" % (self.source_address))
-        packet = self.send_one_packet(self.dallin_buffer[min(self.dallin_buffer)], 1000*(min(self.dallin_buffer)))
+        if self.received_ack_number < len(self.send_buffer):
+            Sim.trace("%d retransmission timer fired" % (self.source_address))
+            packet = self.send_one_packet(self.received_ack_number)
+            self.timer = Sim.scheduler.add(delay=self.timeout, event='retransmit', handler=self.retransmit)
 
     def cancel_timer(self):
         if self.timer:
             Sim.scheduler.cancel(self.timer)
             self.timer = None
+
+    # the sender getting an ACK from the receiver
+    def handle_ack(self, packet):
+        Sim.trace("%d received ReliableTransport ACK from %d for %d" % (packet.destination_address,packet.source_address,packet.ack_number))
+        self.unacked_packet_count -= ((packet.ack_number - self.received_ack_number) / self.mss)
+        self.cancel_timer()
+        self.timer = Sim.scheduler.add(delay=self.timeout, event='new_ack_data', handler=self.retransmit)
+        self.received_ack_number = packet.ack_number
+        self.send_if_possible()
+
+    # the receiver getting a sequence from the sender
+    def handle_sequence(self, packet):
+        # print "We want sequence number:%d\nGot sequence number:%d\n" % (self.ack, packet.sequence)
+        Sim.trace("%d received ReliableTransport segment from %d for %d" % (packet.destination_address,packet.source_address,packet.sequence))
+        self.received_sequences.add(packet.sequence)
+        self.receive_buffer.append(packet)
+
+        # cumulative ack
+        sequence_list = sorted(self.received_sequences)
+        for i in range(self.ack/self.mss, len(sequence_list)):
+            if sequence_list[i] == self.ack:
+                tempPacket = [p for p in self.receive_buffer if p.sequence == self.ack][0]
+                self.increment_ack(tempPacket.sequence + tempPacket.length)
+                self.app.handle_packet(tempPacket)
+        
+        self.send_ack()
