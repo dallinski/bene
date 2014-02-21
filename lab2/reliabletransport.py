@@ -4,7 +4,32 @@ from src.tcppacket import TCPPacket
 
 import math
 
+class ExperimentStats():
+    def __init__(self):
+        self.queueing_delay = []
+        self.file_size = 0
+
+    def set_size(self, size):
+        self.file_size = size
+
+    def size(self): # in bytes
+        return self.file_size
+
+    def size_in_bits(self):
+        return self.size() * 8
+
+    def add(self, delay):
+        self.queueing_delay.append(delay)
+
+    def average(self):
+        return float(sum(self.queueing_delay)) / len(self.queueing_delay)
+
+    def throughput(self, time):
+        return float(self.size_in_bits()) / time
+
 class ReliableTransport(Connection):
+    stats = ExperimentStats()
+
     def __init__(self,transport,source_address,source_port,
                  destination_address,destination_port,window_size,app=None):
         Connection.__init__(self,transport,source_address,source_port,
@@ -107,6 +132,7 @@ class ReliableTransport(Connection):
     def handle_sequence(self, packet):
         # print "We want sequence number:%d\nGot sequence number:%d\n" % (self.ack, packet.sequence)
         Sim.trace("%d received ReliableTransport segment from %d for %d" % (packet.destination_address,packet.source_address,packet.sequence))
+        ReliableTransport.stats.add(packet.queueing_delay)
         self.received_sequences.add(packet.sequence)
         self.receive_buffer.append(packet)
 

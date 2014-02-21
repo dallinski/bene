@@ -70,7 +70,7 @@ class Main(object):
     def run(self):
         # parameters
         Sim.scheduler.reset()
-        Sim.set_debug(True)
+        Sim.set_debug(False)
 
         # setup network
         n1 = Node()
@@ -100,6 +100,7 @@ class Main(object):
 
         # send a file
         with open(self.filename,'r') as f:
+            c1.stats.set_size(os.path.getsize(self.filename))
             while True:
                 data = f.read(1000)
                 if not data:
@@ -108,6 +109,8 @@ class Main(object):
 
         # run the simulation
         Sim.scheduler.run()
+        print "Average queueing delay =", c1.stats.average()
+        print "Throughput =", c1.stats.throughput(Sim.scheduler.current_time())
 
 if __name__ == '__main__':
     m = Main()
