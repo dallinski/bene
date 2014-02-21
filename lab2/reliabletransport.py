@@ -64,7 +64,7 @@ class ReliableTransport(Connection):
     def send_if_possible(self):
         if not self.send_buffer:
             return
-        if self.unacked_packet_count >= self.window_size:
+        if self.unacked_packet_count * 1000 >= self.window_size:
             return
         packet = self.send_one_packet(self.sequence)
         self.increment_sequence(packet.length)

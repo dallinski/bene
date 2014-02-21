@@ -1,0 +1,90 @@
+Sending internet-architecture.pdf-----------------------------
+Bandwidth: 10 Mbps, Propagation Delay: 10ms
+Window Size: 1000 bytes, Loss Rate: 0%
+
+Average queueing delay = 0.0
+Throughput = 362939.894975
+
+File transfer correct!
+
+Sending internet-architecture.pdf-----------------------------
+Bandwidth: 10 Mbps, Propagation Delay: 10ms
+Window Size: 2000 bytes, Loss Rate: 0%
+
+Average queueing delay = 1.55339805825e-07
+Throughput = 665980.476723
+
+File transfer correct!
+
+Sending internet-architecture.pdf-----------------------------
+Bandwidth: 10 Mbps, Propagation Delay: 10ms
+Window Size: 5000 bytes, Loss Rate: 0%
+
+Average queueing delay = 1.55339805825e-06
+Throughput = 1341414.70603
+
+File transfer correct!
+
+Sending internet-architecture.pdf-----------------------------
+Bandwidth: 10 Mbps, Propagation Delay: 10ms
+Window Size: 10000 bytes, Loss Rate: 0%
+
+Average queueing delay = 6.99029126214e-06
+Throughput = 2013341.93161
+
+File transfer correct!
+
+Sending internet-architecture.pdf-----------------------------
+Bandwidth: 10 Mbps, Propagation Delay: 10ms
+Window Size: 15000 bytes, Loss Rate: 0%
+
+Average queueing delay = 1.63106796117e-05
+Throughput = 2416889.47846
+
+File transfer correct!
+
+Sending internet-architecture.pdf-----------------------------
+Bandwidth: 10 Mbps, Propagation Delay: 10ms
+Window Size: 20000 bytes, Loss Rate: 0%
+
+Average queueing delay = 2.95145631068e-05
+Throughput = 2702379.05157
+
+File transfer correct!
+
+Sending internet-architecture.pdf-----------------------------
+Bandwidth: 10 Mbps, Propagation Delay: 10ms
+Window Size: 25000 bytes, Loss Rate: 0%
+
+Average queueing delay = 4.66019417476e-05
+Throughput = 2893077.80024
+
+File transfer correct!
+
+Sending internet-architecture.pdf-----------------------------
+Bandwidth: 10 Mbps, Propagation Delay: 10ms
+Window Size: 30000 bytes, Loss Rate: 0%
+
+Average queueing delay = 6.7572815534e-05
+Throughput = 3022761.77451
+
+File transfer correct!
+
+Sending internet-architecture.pdf-----------------------------
+Bandwidth: 10 Mbps, Propagation Delay: 10ms
+Window Size: 35000 bytes, Loss Rate: 0%
+
+Average queueing delay = 9.2427184466e-05
+Throughput = 3158789.13492
+
+File transfer correct!
+
+Sending internet-architecture.pdf-----------------------------
+Bandwidth: 10 Mbps, Propagation Delay: 10ms
+Window Size: 40000 bytes, Loss Rate: 0%
+
+Average queueing delay = 0.000121165048544
+Throughput = 3257173.09889
+
+File transfer correct!
+
