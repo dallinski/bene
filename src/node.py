@@ -8,6 +8,27 @@ class Node(object):
         self.links = []
         self.protocols = {}
         self.forwarding_table = {}
+        self.neighbors_dv_tables = {}
+
+    def distance_vector_table(self):
+        dv_table = {self.hostname: 0, }
+        if not self.neighbors_dv_tables:
+            return dv_table
+        for neighbor in self.neighbors_dv_tables:
+            neighbor_table = self.neighbors_dv_tables[neighbor]
+            if not neighbor_table:
+                continue
+            link = self.get_link(neighbor.hostname)
+            for dest_node_name in neighbor_table:
+                if dest_node_name == self.hostname:
+                    continue
+                new_distance = neighbor_table[dest_node_name]
+                if dest_node_name not in dv_table:
+                    dv_table[dest_node_name] = new_distance + 1
+                else:  # already in the dv_table
+                    if dv_table[dest_node_name] > new_distance + 1:
+                        dv_table[dest_node_name] = new_distance + 1
+        return dv_table
 
     ## Links ## 
 
@@ -87,6 +108,7 @@ class Node(object):
 
     def deliver_packet(self,packet):
         if packet.protocol not in self.protocols:
+            print 'the packet ("%s") was delivered' % packet.body
             return
         self.protocols[packet.protocol].receive_packet(packet)
 
@@ -102,6 +124,11 @@ class Node(object):
     def forward_unicast_packet(self,packet):
         if packet.destination_address not in self.forwarding_table:
             Sim.trace("%s no routing entry for %d" % (self.hostname,packet.destination_address))
+            print "%s |^^^^^^^^^^^^Forwarding Table^^^^^^^^^^^^|" % self.hostname
+            for i in self.forwarding_table:
+                link = self.forwarding_table[i]
+                print "   |    DestAddr:%s, LinkAddr:%s, %s->%s      |" % (i, link.address, link.startpoint.hostname, link.endpoint.hostname)
+            print "   |________________________________________|"
             return
         link = self.forwarding_table[packet.destination_address]
         Sim.trace("%s forwarding packet to %d" % (self.hostname,packet.destination_address))
@@ -110,5 +137,5 @@ class Node(object):
     def forward_broadcast_packet(self,packet):
         for link in self.links:
             Sim.trace("%s forwarding broadcast packet to %s" % (self.hostname,link.endpoint.hostname))
-            packet_copy = copy.deepcopy(packet)
+            packet_copy = copy.copy(packet)
             link.send_packet(packet_copy)
